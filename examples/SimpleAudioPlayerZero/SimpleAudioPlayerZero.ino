@@ -58,6 +58,7 @@ void loop()
   // until the file is not finished  
   AudioZero.play(myFile);
 
+  AudioZero.end();
   Serial.println("End of file. Thank you for listening!");
   while (true) ;
 }
