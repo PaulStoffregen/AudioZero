@@ -18,6 +18,7 @@
 #include "Arduino.h"
 #include "Print.h"
 
+#include <SerialFlash.h>
 #include <SD.h>
 #include <SPI.h>
 
@@ -28,7 +29,8 @@ public:
 	AudioZeroClass() {};
 	void begin(uint32_t sampleRate);
 //	void prepare(int volume); //not implemented yet
-	void play(File myFile) ;
+	void play(File myFile);
+	void play(SerialFlashFile myFile);
 	void end();
 
 private:
