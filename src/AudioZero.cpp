@@ -22,7 +22,7 @@ bool __StartFlag;
 volatile uint32_t __SampleIndex;
 uint32_t __HeadIndex;
 uint32_t __NumberOfSamples; // Number of samples to read in block
-uint8_t *__WavSamples;
+uint8_t *__WavSamples = NULL;
 
 int __Volume;
 
@@ -37,7 +37,8 @@ void AudioZeroClass::begin(uint32_t sampleRate)
 	__NumberOfSamples = 1024;	//samples to read to have a buffer
 
 	/*Allocate the buffer where the samples are stored*/
-	__WavSamples = (uint8_t *) malloc(__NumberOfSamples * sizeof(uint8_t));
+	if (!__WavSamples)
+		__WavSamples = (uint8_t *) malloc(__NumberOfSamples * sizeof(uint8_t));
 
 	/*Modules configuration */
   	dacConfigure();
