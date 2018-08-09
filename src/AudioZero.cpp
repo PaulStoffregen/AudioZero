@@ -13,8 +13,6 @@
  */
 
 #include "AudioZero.h"
-#include <SD.h>
-#include <SPI.h>
 #include "IntervalTimer.h"
 
 #define DAC_PIN  A12  // A12 for Teensy LC, A14 for Teensy 3.2
@@ -24,7 +22,7 @@ bool __StartFlag;
 volatile uint32_t __SampleIndex;
 uint32_t __HeadIndex;
 uint32_t __NumberOfSamples; // Number of samples to read in block
-uint8_t *__WavSamples;
+uint8_t *__WavSamples = NULL;
 
 int __Volume;
 
@@ -39,7 +37,8 @@ void AudioZeroClass::begin(uint32_t sampleRate)
 	__NumberOfSamples = 1024;	//samples to read to have a buffer
 
 	/*Allocate the buffer where the samples are stored*/
-	__WavSamples = (uint8_t *) malloc(__NumberOfSamples * sizeof(uint8_t));
+	if (!__WavSamples)
+		__WavSamples = (uint8_t *) malloc(__NumberOfSamples * sizeof(uint8_t));
 
 	/*Modules configuration */
   	dacConfigure();
@@ -48,7 +47,7 @@ void AudioZeroClass::begin(uint32_t sampleRate)
 
 void AudioZeroClass::end() {
 	tcDisable();
-	analogWrite(DAC_PIN, 0);
+	analogWrite(DAC_PIN, 0x80);
 }
 
 /*void AudioZeroClass::prepare(int volume){
@@ -70,7 +69,32 @@ void AudioZeroClass::play(File myFile)
 				myFile.read(&__WavSamples[__HeadIndex], current__SampleIndex - __HeadIndex);
 				__HeadIndex = current__SampleIndex;
 			} else if (current__SampleIndex < __HeadIndex) {
-				myFile.read(&__WavSamples[__HeadIndex], __NumberOfSamples-1 - __HeadIndex);
+				myFile.read(&__WavSamples[__HeadIndex], __NumberOfSamples - __HeadIndex);
+				myFile.read(__WavSamples, current__SampleIndex);
+				__HeadIndex = current__SampleIndex;
+			}
+		}
+	}
+	myFile.close();
+}
+
+
+void AudioZeroClass::play(SerialFlashFile myFile)
+{
+	while (myFile.available()) {
+		if (!__StartFlag) {
+			myFile.read(__WavSamples, __NumberOfSamples);
+			__HeadIndex = 0;
+			/*once the buffer is filled for the first time the counter can be started*/
+			tcStartCounter();
+			__StartFlag = true;
+		} else {
+			uint32_t current__SampleIndex = __SampleIndex;
+			if (current__SampleIndex > __HeadIndex) {
+				myFile.read(&__WavSamples[__HeadIndex], current__SampleIndex - __HeadIndex);
+				__HeadIndex = current__SampleIndex;
+			} else if (current__SampleIndex < __HeadIndex) {
+				myFile.read(&__WavSamples[__HeadIndex], __NumberOfSamples - __HeadIndex);
 				myFile.read(__WavSamples, current__SampleIndex);
 				__HeadIndex = current__SampleIndex;
 			}
@@ -88,7 +112,7 @@ void AudioZeroClass::play(File myFile)
  */
 void AudioZeroClass::dacConfigure(void){
 	analogWriteResolution(8);
-	analogWrite(DAC_PIN, 0);
+	analogWrite(DAC_PIN, 0x80);
 }
 
 /**
@@ -116,10 +140,7 @@ AudioZeroClass AudioZero;
 
 void Audio_Handler(void)
 {
-	if (__SampleIndex < __NumberOfSamples - 1) {
-		analogWrite(DAC_PIN, __WavSamples[__SampleIndex++]);
-	} else {
+	analogWrite(DAC_PIN, __WavSamples[__SampleIndex++]);
+	if (__SampleIndex == __NumberOfSamples)
 		__SampleIndex = 0;
-	}
 }
-
